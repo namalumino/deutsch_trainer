@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wortarten-Trainer für Mira</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --bg: #f3f4f6;
+      --card-bg: #ffffff;
+      --text: #1f2937;
+      --success: #10b981;
+      --error: #ef4444;
+      --selected-bg: #c7d2fe;
+      --selected-border: #6366f1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background: var(--card-bg);
+      width: 100%;
+      max-width: 700px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      padding: 24px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      margin-bottom: 8px;
+      color: var(--primary);
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: #6b7280;
+      margin-bottom: 16px;
+    }
+
+    .timer-display {
+      font-size: 2.2rem;
+      font-weight: bold;
+      margin: 10px 0;
+      color: var(--text);
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 8px;
+      background-color: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background-color: var(--primary);
+      width: 100%;
+      transition: width 0.3s linear;
+    }
+
+    .sentence-card {
+      background: #f9fafb;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      min-height: 180px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .sentence-words {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .word-btn {
+      padding: 8px 14px;
+      font-size: 1.2rem;
+      font-weight: 500;
+      background: white;
+      border: 2px solid #d1d5db;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+    }
+
+    .word-btn.selected {
+      background-color: var(--selected-bg);
+      border-color: var(--selected-border);
+      color: #1e1b4b;
+      font-weight: bold;
+      transform: translateY(-2px);
+    }
+
+    .word-btn.tagged {
+      border-style: dashed;
+      opacity: 0.85;
+    }
+
+    .assigned-tags {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 10px;
+      text-align: left;
+    }
+
+    .tag-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 12px;
+      background: #f3f4f6;
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+
+    .tag-item .remove-btn {
+      background: none;
+      border: none;
+      color: var(--error);
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 0 4px;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .btn {
+      background: #e5e7eb;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.1s;
+      color: var(--text);
+    }
+
+    .btn-type {
+      background: #e0e7ff;
+      color: #3730a3;
+      border: 1px solid #c7d2fe;
+    }
+
+    .btn-type:hover {
+      background: #c7d2fe;
+    }
+
+    .btn-check {
+      background: var(--primary);
+      color: white;
+      grid-column: 1 / -1;
+      padding: 14px;
+      font-size: 1.1rem;
+      margin-top: 8px;
+    }
+
+    .btn-check:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-start {
+      background: var(--success);
+      color: white;
+      width: 100%;
+      padding: 16px;
+      font-size: 1.25rem;
+      margin-top: 10px;
+    }
+
+    .feedback {
+      min-height: 28px;
+      margin-top: 10px;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+
+    .feedback.correct { color: var(--success); }
+    .feedback.incorrect { color: var(--error); }
+
+    .stats-section {
+      margin-top: 24px;
+      border-top: 2px solid #e5e7eb;
+      padding-top: 16px;
+      text-align: left;
+    }
+
+    .history-list {
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 0.9rem;
+    }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px dashed #e5e7eb;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Wortarten bestimmen</h1>
+  <p class="subtitle">Klicke ein Wort an und wähle die passende Wortart aus. Bestimme alle Wörter im Satz und klicke dann auf Kontrollieren!</p>
+
+  <!-- START SCREEN -->
+  <div id="start-screen">
+    <p style="margin-bottom: 15px;">Bestimme in 5 Minuten so viele Wörter wie möglich richtig!</p>
+    <button class="btn btn-start" onclick="startSession()">5-Minuten-Session starten</button>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="game-screen" class="hidden">
+    <div class="timer-display" id="timer">05:00</div>
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <div class="sentence-card">
+      <div class="sentence-words" id="sentence-words"></div>
+      <div class="assigned-tags" id="assigned-tags"></div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+
+    <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 6px;">Wähle die Wortart für das markierte Wort:</p>
+    <div class="controls-grid">
+      <button class="btn btn-type" onclick="assignType('Verb')">Verb (Zeitwort)</button>
+      <button class="btn btn-type" onclick="assignType('Nomen')">Nomen (Namenwort)</button>
+      <button class="btn btn-type" onclick="assignType('Adjektiv')">Adjektiv (Eigenschaftswort)</button>
+      <button class="btn btn-type" onclick="assignType('Artikel')">Artikel (Begleiter)</button>
+      <button class="btn btn-type" onclick="assignType('Pronomen')">Pronomen (Fürwort)</button>
+      <button class="btn btn-type" onclick="assignType('Numerale')">Numerale (Zahlwort)</button>
+      <button class="btn btn-type" onclick="assignType('Konjunktion')">Konjunktion (Bindewort)</button>
+      <button class="btn btn-type" onclick="assignType('Präposition')">Präposition (Vorwort)</button>
+      <button class="btn btn-type" onclick="assignType('Adverb')">Adverb (Umstandswort)</button>
+      <button class="btn btn-type" onclick="assignType('Interjektion')">Interjektion (Ausrufewort)</button>
+
+      <button class="btn btn-check" onclick="checkFullSentence()">Satz kontrollieren ✔</button>
+    </div>
+  </div>
+
+  <!-- RESULT SCREEN -->
+  <div id="result-screen" class="hidden">
+    <h2>Zeit abgelaufen!</h2>
+    <div class="sentence-card" style="margin-top: 15px;">
+      <p>Geschaffte Sätze: <strong id="res-total">0</strong></p>
+      <p>Vollständig richtig: <strong id="res-correct" style="color: var(--success);">0</strong></p>
+      <p>Fehlerhafte Sätze: <strong id="res-wrong" style="color: var(--error);">0</strong></p>
+      <p>Genauigkeit: <strong id="res-accuracy">0%</strong></p>
+    </div>
+    <button class="btn btn-start" onclick="startSession()">Neuer Versuch</button>
+  </div>
+
+  <!-- STATISTIK -->
+  <div class="stats-section">
+    <strong>Tagesstatistik (Lokal)</strong>
+    <div class="history-list" id="history-list"></div>
+  </div>
+</div>
+
+<script>
+  // Datenbank mit Beispielsätzen aus der Wortarten-Grammatik
+  const sentencesDatabase = [
+    {
+      words: ["Der", "schnelle", "Hund", "bellt", "laut."],
+      solution: [
+        { indices: [0], type: "Artikel" },
+        { indices: [1], type: "Adjektiv" },
+        { indices: [2], type: "Nomen" },
+        { indices: [3], type: "Verb" },
+        { indices: [4], type: "Adverb" }
+      ]
+    },
+    {
+      words: ["Hurra!", "Wir", "haben", "zwei", "Tore", "geschossen."],
+      solution: [
+        { indices: [0], type: "Interjektion" },
+        { indices: [1], type: "Pronomen" },
+        { indices: [2], type: "Verb" },
+        { indices: [3], type: "Numerale" },
+        { indices: [4], type: "Nomen" },
+        { indices: [5], type: "Verb" }
+      ]
+    },
+    {
+      words: ["Lisa", "geht", "in", "die", "Schule,", "weil", "sie", "lernt."],
+      solution: [
+        { indices: [0], type: "Nomen" },
+        { indices: [1], type: "Verb" },
+        { indices: [2], type: "Präposition" },
+        { indices: [3], type: "Artikel" },
+        { indices: [4], type: "Nomen" },
+        { indices: [5], type: "Konjunktion" },
+        { indices: [6], type: "Pronomen" },
+        { indices: [7], type: "Verb" }
+      ]
+    },
+    {
+      words: ["Heute", "scheint", "die", "warme", "Sonne", "sehr", "hell."],
+      solution: [
+        { indices: [0], type: "Adverb" },
+        { indices: [1], type: "Verb" },
+        { indices: [2], type: "Artikel" },
+        { indices: [3], type: "Adjektiv" },
+        { indices: [4], type: "Nomen" },
+        { indices: [5], type: "Adverb" },
+        { indices: [6], type: "Adjektiv" }
+      ]
+    },
+    {
+      words: ["Au!", "Mein", "Knie", "tut", "weh."],
+      solution: [
+        { indices: [0], type: "Interjektion" },
+        { indices: [1], type: "Pronomen" },
+        { indices: [2], type: "Nomen" },
+        { indices: [3], type: "Verb" },
+        { indices: [4], type: "Verb" }
+      ]
+    }
+  ];
+
+  let timerInterval;
+  let timeLeft = 300;
+  let currentSentenceIdx = 0;
+  let selectedIndices = [];
+  let userAssignments = [];
+  let countCorrect = 0;
+  let countTotal = 0;
+
+  function startSession() {
+    countCorrect = 0;
+    countTotal = 0;
+    timeLeft = 300;
+
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('result-screen').classList.add('hidden');
+    document.getElementById('game-screen').classList.remove('hidden');
+
+    loadNextSentence();
+    updateTimerDisplay();
+
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      updateTimerDisplay();
+      if (timeLeft <= 0) {
+        endSession();
+      }
+    }, 1000);
+  }
+
+  function updateTimerDisplay() {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    document.getElementById('timer').innerText = 
+      `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    
+    const percent = (timeLeft / 300) * 100;
+    document.getElementById('progress-bar').style.width = percent + '%';
+  }
+
+  function loadNextSentence() {
+    currentSentenceIdx = Math.floor(Math.random() * sentencesDatabase.length);
+    selectedIndices = [];
+    userAssignments = [];
+    
+    document.getElementById('feedback').innerText = '';
+    renderWords();
+    renderAssignments();
+  }
+
+  function renderWords() {
+    const currentSentence = sentencesDatabase[currentSentenceIdx];
+    const container = document.getElementById('sentence-words');
+    container.innerHTML = '';
+
+    currentSentence.words.forEach((word, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'word-btn';
+      btn.innerText = word;
+
+      if (selectedIndices.includes(idx)) {
+        btn.classList.add('selected');
+      }
+
+      const isAssigned = userAssignments.some(a => a.indices.includes(idx));
+      if (isAssigned) {
+        btn.classList.add('tagged');
+      }
+
+      btn.onclick = () => toggleWordSelection(idx);
+      container.appendChild(btn);
+    });
+  }
+
+  function toggleWordSelection(idx) {
+    if (selectedIndices.includes(idx)) {
+      selectedIndices = selectedIndices.filter(i => i !== idx);
+    } else {
+      selectedIndices.push(idx);
+      selectedIndices.sort((a, b) => a - b);
+    }
+    renderWords();
+  }
+
+  function assignType(type) {
+    if (selectedIndices.length === 0) {
+      document.getElementById('feedback').innerText = 'Bitte wähle zuerst ein Wort aus!';
+      document.getElementById('feedback').className = 'feedback incorrect';
+      return;
+    }
+
+    userAssignments = userAssignments.filter(a => 
+      !a.indices.some(i => selectedIndices.includes(i))
+    );
+
+    userAssignments.push({
+      indices: [...selectedIndices],
+      type: type
+    });
+
+    selectedIndices = [];
+    document.getElementById('feedback').innerText = '';
+    renderWords();
+    renderAssignments();
+  }
+
+  function removeAssignment(index) {
+    userAssignments.splice(index, 1);
+    renderWords();
+    renderAssignments();
+  }
+
+  function renderAssignments() {
+    const currentSentence = sentencesDatabase[currentSentenceIdx];
+    const container = document.getElementById('assigned-tags');
+    container.innerHTML = '';
+
+    userAssignments.forEach((item, idx) => {
+      const wordsText = item.indices.map(i => currentSentence.words[i]).join(' ');
+      const div = document.createElement('div');
+      div.className = 'tag-item';
+      div.innerHTML = `
+        <span><strong>${wordsText}</strong> → <em>${item.type}</em></span>
+        <button class="remove-btn" onclick="removeAssignment(${idx})">✕</button>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function checkFullSentence() {
+    const currentSentence = sentencesDatabase[currentSentenceIdx];
+    const feedbackEl = document.getElementById('feedback');
+
+    if (userAssignments.length === 0) {
+      feedbackEl.innerText = 'Bitte ordne erst Wortarten zu!';
+      feedbackEl.className = 'feedback incorrect';
+      return;
+    }
+
+    const solution = currentSentence.solution;
+    let isCorrect = true;
+
+    if (userAssignments.length !== solution.length) {
+      isCorrect = false;
+    } else {
+      for (let sol of solution) {
+        const match = userAssignments.find(u => 
+          u.type === sol.type &&
+          u.indices.length === sol.indices.length &&
+          u.indices.every((val, index) => val === sol.indices[index])
+        );
+
+        if (!match) {
+          isCorrect = false;
+          break;
+        }
+      }
+    }
+
+    countTotal++;
+
+    if (isCorrect) {
+      countCorrect++;
+      feedbackEl.innerText = 'Super gemacht, Mira! Alle Wortarten sind richtig! 🎉';
+      feedbackEl.className = 'feedback correct';
+
+      setTimeout(() => {
+        loadNextSentence();
+      }, 1200);
+    } else {
+      feedbackEl.innerText = 'Noch nicht ganz richtig! Überprüfe die Zuordnung noch einmal.';
+      feedbackEl.className = 'feedback incorrect';
+    }
+  }
+
+  function endSession() {
+    clearInterval(timerInterval);
+
+    document.getElementById('game-screen').classList.add('hidden');
+    document.getElementById('result-screen').classList.remove('hidden');
+
+    const wrong = countTotal - countCorrect;
+    const accuracy = countTotal > 0 ? Math.round((countCorrect / countTotal) * 100) : 0;
+
+    document.getElementById('res-total').innerText = countTotal;
+    document.getElementById('res-correct').innerText = countCorrect;
+    document.getElementById('res-wrong').innerText = wrong;
+    document.getElementById('res-accuracy').innerText = accuracy + '%';
+
+    saveStats(countCorrect, countTotal);
+    renderStats();
+  }
+
+  function saveStats(correct, total) {
+    const today = new Date().toISOString().split('T')[0];
+    let stats = JSON.parse(localStorage.getItem('wortarten_stats') || '{}');
+
+    if (!stats[today]) {
+      stats[today] = { sessions: 0, totalCorrect: 0, totalQuestions: 0 };
+    }
+
+    stats[today].sessions += 1;
+    stats[today].totalCorrect += correct;
+    stats[today].totalQuestions += total;
+
+    localStorage.setItem('wortarten_stats', JSON.stringify(stats));
+  }
+
+  function renderStats() {
+    const stats = JSON.parse(localStorage.getItem('wortarten_stats') || '{}');
+    const listEl = document.getElementById('history-list');
+    listEl.innerHTML = '';
+
+    const dates = Object.keys(stats).sort().reverse();
+
+    if (dates.length === 0) {
+      listEl.innerHTML = '<div class="history-item">Noch keine Daten vorhanden</div>';
+      return;
+    }
+
+    dates.forEach(date => {
+      const item = stats[date];
+      const div = document.createElement('div');
+      div.className = 'history-item';
+      div.innerHTML = `
+        <span><strong>${date}</strong> (${item.sessions} Session${item.sessions > 1 ? 's' : ''})</span>
+        <span>${item.totalCorrect} / ${item.totalQuestions} Sätze richtig</span>
+      `;
+      listEl.appendChild(div);
+    });
+  }
+
+  renderStats();
+</script>
+</body>
+</html>
