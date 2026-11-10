@@ -85,7 +85,7 @@
       border-radius: 12px;
       padding: 20px;
       margin-bottom: 20px;
-      min-height: 180px;
+      min-height: 160px;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -192,8 +192,13 @@
       margin-top: 8px;
     }
 
-    .btn-check:hover {
-      background: var(--primary-hover);
+    .btn-next {
+      background: var(--success);
+      color: white;
+      grid-column: 1 / -1;
+      padding: 14px;
+      font-size: 1.1rem;
+      margin-top: 8px;
     }
 
     .btn-start {
@@ -205,15 +210,27 @@
       margin-top: 10px;
     }
 
-    .feedback {
-      min-height: 28px;
-      margin-top: 10px;
-      font-weight: bold;
-      font-size: 1rem;
+    /* Vergleichsansicht / Feedback */
+    .comparison-box {
+      width: 100%;
+      margin-top: 15px;
+      text-align: left;
+      font-size: 0.95rem;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px;
     }
 
-    .feedback.correct { color: var(--success); }
-    .feedback.incorrect { color: var(--error); }
+    .comparison-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px dashed #f3f4f6;
+    }
+
+    .comparison-row.correct-row { color: var(--success); }
+    .comparison-row.wrong-row { color: var(--error); }
 
     .stats-section {
       margin-top: 24px;
@@ -242,7 +259,7 @@
 
 <div class="container">
   <h1>Wortarten bestimmen</h1>
-  <p class="subtitle">Klicke ein Wort an und wähle die passende Wortart aus. Bestimme alle Wörter im Satz und klicke dann auf Kontrollieren!</p>
+  <p class="subtitle">Bestimme alle Wörter im Satz und klicke auf Auswerten.</p>
 
   <!-- START SCREEN -->
   <div id="start-screen">
@@ -260,23 +277,32 @@
     <div class="sentence-card">
       <div class="sentence-words" id="sentence-words"></div>
       <div class="assigned-tags" id="assigned-tags"></div>
-      <div class="feedback" id="feedback"></div>
+      
+      <!-- Bereich für die Auswertung / den Vergleich -->
+      <div id="comparison-area" class="comparison-box hidden"></div>
     </div>
 
-    <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 6px;">Wähle die Wortart für das markierte Wort:</p>
-    <div class="controls-grid">
-      <button class="btn btn-type" onclick="assignType('Verb')">Verb (Zeitwort)</button>
-      <button class="btn btn-type" onclick="assignType('Nomen')">Nomen (Namenwort)</button>
-      <button class="btn btn-type" onclick="assignType('Adjektiv')">Adjektiv (Eigenschaftswort)</button>
-      <button class="btn btn-type" onclick="assignType('Artikel')">Artikel (Begleiter)</button>
-      <button class="btn btn-type" onclick="assignType('Pronomen')">Pronomen (Fürwort)</button>
-      <button class="btn btn-type" onclick="assignType('Numerale')">Numerale (Zahlwort)</button>
-      <button class="btn btn-type" onclick="assignType('Konjunktion')">Konjunktion (Bindewort)</button>
-      <button class="btn btn-type" onclick="assignType('Präposition')">Präposition (Vorwort)</button>
-      <button class="btn btn-type" onclick="assignType('Adverb')">Adverb (Umstandswort)</button>
-      <button class="btn btn-type" onclick="assignType('Interjektion')">Interjektion (Ausrufewort)</button>
+    <div id="input-controls">
+      <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 6px;">Wort markieren & Wortart wählen:</p>
+      <div class="controls-grid">
+        <button class="btn btn-type" onclick="assignType('Verb')">Verb</button>
+        <button class="btn btn-type" onclick="assignType('Nomen')">Nomen</button>
+        <button class="btn btn-type" onclick="assignType('Adjektiv')">Adjektiv</button>
+        <button class="btn btn-type" onclick="assignType('Artikel')">Artikel</button>
+        <button class="btn btn-type" onclick="assignType('Pronomen')">Pronomen</button>
+        <button class="btn btn-type" onclick="assignType('Numerale')">Numerale</button>
+        <button class="btn btn-type" onclick="assignType('Konjunktion')">Konjunktion</button>
+        <button class="btn btn-type" onclick="assignType('Präposition')">Präposition</button>
+        <button class="btn btn-type" onclick="assignType('Adverb')">Adverb</button>
+        <button class="btn btn-type" onclick="assignType('Interjektion')">Interjektion</button>
 
-      <button class="btn btn-check" onclick="checkFullSentence()">Satz kontrollieren ✔</button>
+        <button class="btn btn-check" onclick="evaluateSentence()">Satz auswerten ✔</button>
+      </div>
+    </div>
+
+    <!-- Nächster-Satz-Knopf (wird erst nach der Auswertung sichtbar) -->
+    <div id="next-controls" class="hidden">
+      <button class="btn btn-next" onclick="nextSentenceButton()">Nächster Satz ➔</button>
     </div>
   </div>
 
@@ -300,71 +326,71 @@
 </div>
 
 <script>
-  // Datenbank mit Beispielsätzen aus der Wortarten-Grammatik
   const sentencesDatabase = [
     {
       words: ["Der", "schnelle", "Hund", "bellt", "laut."],
       solution: [
-        { indices: [0], type: "Artikel" },
-        { indices: [1], type: "Adjektiv" },
-        { indices: [2], type: "Nomen" },
-        { indices: [3], type: "Verb" },
-        { indices: [4], type: "Adverb" }
+        { word: "Der", type: "Artikel" },
+        { word: "schnelle", type: "Adjektiv" },
+        { word: "Hund", type: "Nomen" },
+        { word: "bellt", type: "Verb" },
+        { word: "laut.", type: "Adverb" }
       ]
     },
     {
       words: ["Hurra!", "Wir", "haben", "zwei", "Tore", "geschossen."],
       solution: [
-        { indices: [0], type: "Interjektion" },
-        { indices: [1], type: "Pronomen" },
-        { indices: [2], type: "Verb" },
-        { indices: [3], type: "Numerale" },
-        { indices: [4], type: "Nomen" },
-        { indices: [5], type: "Verb" }
+        { word: "Hurra!", type: "Interjektion" },
+        { word: "Wir", type: "Pronomen" },
+        { word: "haben", type: "Verb" },
+        { word: "zwei", type: "Numerale" },
+        { word: "Tore", type: "Nomen" },
+        { word: "geschossen.", type: "Verb" }
       ]
     },
     {
       words: ["Lisa", "geht", "in", "die", "Schule,", "weil", "sie", "lernt."],
       solution: [
-        { indices: [0], type: "Nomen" },
-        { indices: [1], type: "Verb" },
-        { indices: [2], type: "Präposition" },
-        { indices: [3], type: "Artikel" },
-        { indices: [4], type: "Nomen" },
-        { indices: [5], type: "Konjunktion" },
-        { indices: [6], type: "Pronomen" },
-        { indices: [7], type: "Verb" }
+        { word: "Lisa", type: "Nomen" },
+        { word: "geht", type: "Verb" },
+        { word: "in", type: "Präposition" },
+        { word: "die", type: "Artikel" },
+        { word: "Schule,", type: "Nomen" },
+        { word: "weil", type: "Konjunktion" },
+        { word: "sie", type: "Pronomen" },
+        { word: "lernt.", type: "Verb" }
       ]
     },
     {
       words: ["Heute", "scheint", "die", "warme", "Sonne", "sehr", "hell."],
       solution: [
-        { indices: [0], type: "Adverb" },
-        { indices: [1], type: "Verb" },
-        { indices: [2], type: "Artikel" },
-        { indices: [3], type: "Adjektiv" },
-        { indices: [4], type: "Nomen" },
-        { indices: [5], type: "Adverb" },
-        { indices: [6], type: "Adjektiv" }
+        { word: "Heute", type: "Adverb" },
+        { word: "scheint", type: "Verb" },
+        { word: "die", type: "Artikel" },
+        { word: "warme", type: "Adjektiv" },
+        { word: "Sonne", type: "Nomen" },
+        { word: "sehr", type: "Adverb" },
+        { word: "hell.", type: "Adjektiv" }
       ]
     },
     {
       words: ["Au!", "Mein", "Knie", "tut", "weh."],
       solution: [
-        { indices: [0], type: "Interjektion" },
-        { indices: [1], type: "Pronomen" },
-        { indices: [2], type: "Nomen" },
-        { indices: [3], type: "Verb" },
-        { indices: [4], type: "Verb" }
+        { word: "Au!", type: "Interjektion" },
+        { word: "Mein", type: "Pronomen" },
+        { word: "Knie", type: "Nomen" },
+        { word: "tut", type: "Verb" },
+        { word: "weh.", type: "Verb" }
       ]
     }
   ];
 
   let timerInterval;
   let timeLeft = 300;
+  let isTimerRunning = false;
   let currentSentenceIdx = 0;
   let selectedIndices = [];
-  let userAssignments = [];
+  let userAssignments = {}; // { wordIndex: Wortart }
   let countCorrect = 0;
   let countTotal = 0;
 
@@ -378,6 +404,12 @@
     document.getElementById('game-screen').classList.remove('hidden');
 
     loadNextSentence();
+    startTimer();
+  }
+
+  function startTimer() {
+    if (isTimerRunning) return;
+    isTimerRunning = true;
     updateTimerDisplay();
 
     clearInterval(timerInterval);
@@ -388,6 +420,11 @@
         endSession();
       }
     }, 1000);
+  }
+
+  function stopTimer() {
+    isTimerRunning = false;
+    clearInterval(timerInterval);
   }
 
   function updateTimerDisplay() {
@@ -403,11 +440,16 @@
   function loadNextSentence() {
     currentSentenceIdx = Math.floor(Math.random() * sentencesDatabase.length);
     selectedIndices = [];
-    userAssignments = [];
+    userAssignments = {};
     
-    document.getElementById('feedback').innerText = '';
+    document.getElementById('comparison-area').classList.add('hidden');
+    document.getElementById('comparison-area').innerHTML = '';
+    document.getElementById('input-controls').classList.remove('hidden');
+    document.getElementById('next-controls').classList.add('hidden');
+
     renderWords();
     renderAssignments();
+    startTimer(); // Timer läuft weiter, wenn neuer Satz startet
   }
 
   function renderWords() {
@@ -424,8 +466,7 @@
         btn.classList.add('selected');
       }
 
-      const isAssigned = userAssignments.some(a => a.indices.includes(idx));
-      if (isAssigned) {
+      if (userAssignments[idx]) {
         btn.classList.add('tagged');
       }
 
@@ -435,39 +476,30 @@
   }
 
   function toggleWordSelection(idx) {
+    if (!isTimerRunning && document.getElementById('input-controls').classList.contains('hidden')) return;
+
     if (selectedIndices.includes(idx)) {
       selectedIndices = selectedIndices.filter(i => i !== idx);
     } else {
       selectedIndices.push(idx);
-      selectedIndices.sort((a, b) => a - b);
     }
     renderWords();
   }
 
   function assignType(type) {
-    if (selectedIndices.length === 0) {
-      document.getElementById('feedback').innerText = 'Bitte wähle zuerst ein Wort aus!';
-      document.getElementById('feedback').className = 'feedback incorrect';
-      return;
-    }
+    if (selectedIndices.length === 0) return;
 
-    userAssignments = userAssignments.filter(a => 
-      !a.indices.some(i => selectedIndices.includes(i))
-    );
-
-    userAssignments.push({
-      indices: [...selectedIndices],
-      type: type
+    selectedIndices.forEach(idx => {
+      userAssignments[idx] = type;
     });
 
     selectedIndices = [];
-    document.getElementById('feedback').innerText = '';
     renderWords();
     renderAssignments();
   }
 
-  function removeAssignment(index) {
-    userAssignments.splice(index, 1);
+  function removeAssignment(wordIdx) {
+    delete userAssignments[wordIdx];
     renderWords();
     renderAssignments();
   }
@@ -477,66 +509,68 @@
     const container = document.getElementById('assigned-tags');
     container.innerHTML = '';
 
-    userAssignments.forEach((item, idx) => {
-      const wordsText = item.indices.map(i => currentSentence.words[i]).join(' ');
+    Object.keys(userAssignments).forEach(wordIdx => {
+      const wordText = currentSentence.words[wordIdx];
+      const typeText = userAssignments[wordIdx];
+
       const div = document.createElement('div');
       div.className = 'tag-item';
       div.innerHTML = `
-        <span><strong>${wordsText}</strong> → <em>${item.type}</em></span>
-        <button class="remove-btn" onclick="removeAssignment(${idx})">✕</button>
+        <span><strong>${wordText}</strong> → <em>${typeText}</em></span>
+        <button class="remove-btn" onclick="removeAssignment(${wordIdx})">✕</button>
       `;
       container.appendChild(div);
     });
   }
 
-  function checkFullSentence() {
+  function evaluateSentence() {
     const currentSentence = sentencesDatabase[currentSentenceIdx];
-    const feedbackEl = document.getElementById('feedback');
+    
+    // Timer sofort stoppen!
+    stopTimer();
 
-    if (userAssignments.length === 0) {
-      feedbackEl.innerText = 'Bitte ordne erst Wortarten zu!';
-      feedbackEl.className = 'feedback incorrect';
-      return;
-    }
+    document.getElementById('input-controls').classList.add('hidden');
+    document.getElementById('next-controls').classList.remove('hidden');
 
-    const solution = currentSentence.solution;
-    let isCorrect = true;
+    let fullCorrect = true;
+    let comparisonHtml = '<strong>Ergebnis & Vergleich:</strong><br><br>';
 
-    if (userAssignments.length !== solution.length) {
-      isCorrect = false;
-    } else {
-      for (let sol of solution) {
-        const match = userAssignments.find(u => 
-          u.type === sol.type &&
-          u.indices.length === sol.indices.length &&
-          u.indices.every((val, index) => val === sol.indices[index])
-        );
+    currentSentence.solution.forEach((solItem, idx) => {
+      const userType = userAssignments[idx] || '<i>(nicht bestimmt)</i>';
+      const isMatch = userAssignments[idx] === solItem.type;
 
-        if (!match) {
-          isCorrect = false;
-          break;
-        }
-      }
-    }
+      if (!isMatch) fullCorrect = false;
+
+      const rowClass = isMatch ? 'correct-row' : 'wrong-row';
+      const icon = isMatch ? '✔' : '✖';
+
+      comparisonHtml += `
+        <div class="comparison-row ${rowClass}">
+          <span><strong>${solItem.word}</strong>: Deine Wahl: ${userType} ${icon}</span>
+          <span>Richtig: <strong>${solItem.type}</strong></span>
+        </div>
+      `;
+    });
 
     countTotal++;
-
-    if (isCorrect) {
+    if (fullCorrect) {
       countCorrect++;
-      feedbackEl.innerText = 'Super gemacht, Mira! Alle Wortarten sind richtig! 🎉';
-      feedbackEl.className = 'feedback correct';
-
-      setTimeout(() => {
-        loadNextSentence();
-      }, 1200);
+      comparisonHtml = `<span style="color: var(--success); font-weight: bold;">Super! Alles auf Anhieb richtig! 🎉</span><br><br>` + comparisonHtml;
     } else {
-      feedbackEl.innerText = 'Noch nicht ganz richtig! Überprüfe die Zuordnung noch einmal.';
-      feedbackEl.className = 'feedback incorrect';
+      comparisonHtml = `<span style="color: var(--error); font-weight: bold;">Schau dir die Abweichungen an:</span><br><br>` + comparisonHtml;
     }
+
+    const compArea = document.getElementById('comparison-area');
+    compArea.innerHTML = comparisonHtml;
+    compArea.classList.remove('hidden');
+  }
+
+  function nextSentenceButton() {
+    loadNextSentence();
   }
 
   function endSession() {
-    clearInterval(timerInterval);
+    stopTimer();
 
     document.getElementById('game-screen').classList.add('hidden');
     document.getElementById('result-screen').classList.remove('hidden');
@@ -555,7 +589,7 @@
 
   function saveStats(correct, total) {
     const today = new Date().toISOString().split('T')[0];
-    let stats = JSON.parse(localStorage.getItem('wortarten_stats') || '{}');
+    let stats = JSON.parse(localStorage.getItem('wortarten_stats_v2') || '{}');
 
     if (!stats[today]) {
       stats[today] = { sessions: 0, totalCorrect: 0, totalQuestions: 0 };
@@ -565,11 +599,11 @@
     stats[today].totalCorrect += correct;
     stats[today].totalQuestions += total;
 
-    localStorage.setItem('wortarten_stats', JSON.stringify(stats));
+    localStorage.setItem('wortarten_stats_v2', JSON.stringify(stats));
   }
 
   function renderStats() {
-    const stats = JSON.parse(localStorage.getItem('wortarten_stats') || '{}');
+    const stats = JSON.parse(localStorage.getItem('wortarten_stats_v2') || '{}');
     const listEl = document.getElementById('history-list');
     listEl.innerHTML = '';
 
